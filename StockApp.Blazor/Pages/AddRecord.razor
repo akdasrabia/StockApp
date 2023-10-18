@@ -1,0 +1,223 @@
+﻿@page "/"
+@using Blazored.Typeahead
+@using StockApp.Blazor.Data;
+@inject RecordService recordService;
+
+<h3>Stok Kaydı Ekle</h3>
+
+
+@if (message != String.Empty)
+{
+    <div class="alert alert-warning" role="alert">
+        @message
+    </div>
+}
+
+<EditForm Model="@obj" OnValidSubmit="AddNewRecord">
+    <DataAnnotationsValidator/>
+    <ValidationSummary />
+    <div class="d-flex w-100 gap-5 justify-content-between">
+        <div class=" w-50 ">
+            <label>Stok Kodu</label>
+             @if (stocklist != null)
+            {
+                <BlazoredTypeahead SearchMethod="SearchStockCode" @bind-Value="SelectedStock">
+                    <SelectedTemplate Context="template">
+                        @template.StockCode
+                    </SelectedTemplate>
+                    <ResultTemplate Context="template">
+                        @template.StockCode -  @template.StockName
+                    </ResultTemplate>
+                    <NotFoundTemplate Context="template">
+                        Stok kaydı bulunamadı.
+                    </NotFoundTemplate>
+                </BlazoredTypeahead>
+            } 
+        </div>
+        <div class=" w-50 ">
+            <label>Stok Adı</label>
+            @if (stocklist != null)
+            {
+                 <BlazoredTypeahead class="w-100 form-control" style="padding: .375rem .75rem !important;" SearchMethod="SearchStockName" @bind-Value="SelectedStock">
+                    <SelectedTemplate Context="template">
+                        @template.StockName
+                    </SelectedTemplate>
+                    <ResultTemplate Context="template">
+                        @template.StockName -  @template.StockCode
+                    </ResultTemplate>
+                    <NotFoundTemplate Context="template">
+                        Stok kaydı bulunamadı.
+                   </NotFoundTemplate>
+                </BlazoredTypeahead> 
+            }
+        </div>
+    </div>
+    <table class="table">
+        <thead>
+            <tr> 
+            <th><label>Miktar</label></th>
+            <th><label>Fiyat</label></th>
+            <th><label>Tutar</label></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="w-20"><InputNumber class="form-control" @bind-Value="obj.Amount" /></td>
+                <td class="w-20"><InputNumber class="form-control" @bind-Value=obj.Cost @bind-Value:format="F2" /></td>
+                <td class="w-20"><InputNumber class="form-control" @bind-Value=obj.TotalCost @bind-Value:format="F2" /></td>
+            </tr> 
+        </tbody>
+    </table>
+    <div class="d-flex justify-content-end align-items-center ">
+        <button type="button" class="btn btn-primary" @onclick="AddNewRecord">Ekle</button>
+    </div> 
+</EditForm>
+
+
+
+@if (records.Count != 0)
+{
+    <h3>Kayıtlar</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"></th>
+                <th scope="col">Stok Kodu</th>
+                <th scope="col">Stok Adı</th>
+                <th scope="col">Miktar</th>
+                <th scope="col">Fiyat</th>
+                <th scope="col">Tutar</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                int index = 0;
+            }
+            @foreach (var record in records)
+            {
+                index++;
+                <tr>
+                    <td>@index</td>
+                    <td>@record.StockCode</td>
+                    <td>@record.StockName</td> 
+                    <td>@record.Amount</td>
+                    <td>@record.Cost</td>
+                    <td>@record.TotalCost</td> 
+
+
+
+                    <td>
+                         <button @onclick="(() => RemoveRecord(record))" class="btn btn-danger"><i class="bi bi-trash-fill"></i></button> 
+                    </td>
+                </tr>
+
+            }
+
+        </tbody>
+    </table>
+    <div class="d-flex justify-content-end align-items-center ">
+        <button type="button" class="btn btn-success" @onclick="SaveRecord">Kaydet</button>
+
+    </div>
+}
+
+
+
+
+@code {
+    List<Record> records = new List<Record>();
+    List<Stock> stocklist = new List<Stock>();
+
+    private int id = 0;
+
+    Stock stockobj = new Stock();
+
+    public Stock SelectedStock = new();
+
+
+    Record obj = new Record()
+        {
+            StockCode = String.Empty,
+            StockName = String.Empty,
+            Amount = 0,
+            Cost = 0,
+            TotalCost = 0
+        };
+
+
+    private string message = String.Empty;
+
+
+    protected override void OnInitialized()
+    {
+        stocklist.Add( new Stock() { StockCode = "566565", StockName = "Buzdolabı" } );
+        stocklist.Add( new Stock() { StockCode = "566532", StockName = "Televizyon" } );
+        stocklist.Add( new Stock() { StockCode = "566546", StockName = "Fotoğraf Makinesi" } );
+        stocklist.Add( new Stock() { StockCode = "566571", StockName = "Kulaklık" } );
+        stocklist.Add( new Stock() { StockCode = "566520", StockName = "Mouse" } );
+        stocklist.Add( new Stock() { StockCode = "566513", StockName = "Monitör" } );
+        stocklist.Add( new Stock() { StockCode = "566547", StockName = "Saat" } );
+    }
+
+    private async Task<IEnumerable<Stock>> SearchStockCode(string searchText)
+    {
+        return await Task.FromResult(stocklist.Where(x => x.StockCode.ToLower().Contains(searchText.ToLower())).ToList());
+    }
+
+    private async Task<IEnumerable<Stock>> SearchStockName(string searchText)
+    {
+        return await Task.FromResult(stocklist.Where(x => x.StockName.ToLower().Contains(searchText.ToLower())).ToList());
+    }
+
+    protected void RemoveRecord(Record record)
+    {
+        records.Remove(record);
+    }
+
+    protected void AddNewRecord()
+    {
+        if (obj.Cost <= 0 || obj.TotalCost <= 0)
+        {
+            message = "Fiyat ya da tutar 0 dan küçük olamaz";
+        }
+        if (obj.Amount <= 0)
+        {
+            message = "Stok miktarı için 0 dan büyük bir değer giriniz.";
+        }
+
+        if (SelectedStock == null)
+        {
+            Console.WriteLine("empty");
+            message = "Stok Kodu veya Stok Adı boş olamaz";
+        }
+
+        if (SelectedStock != null && obj.Amount > 0 && obj.Cost > 0 && obj.TotalCost > 0)
+        {
+            message = String.Empty; 
+            records.Add(new Record()
+                {
+                    Id = id,
+                     StockCode = SelectedStock.StockCode,
+                     StockName = SelectedStock.StockName,
+                    Amount = obj.Amount,
+                    Cost = obj.Cost,
+                    TotalCost = obj.TotalCost
+                });
+            id++;
+
+             obj.StockCode = string.Empty;
+             obj.StockName = string.Empty;
+            obj.Amount = 0;
+            obj.Cost = 0;
+            obj.TotalCost = 0;
+        }
+
+
+    }
+
+    protected void SaveRecord()
+    {
+        Console.WriteLine(records.Count);
+    }
+}
